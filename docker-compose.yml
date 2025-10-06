@@ -1,0 +1,14 @@
+version: '3'
+services:
+  db: 
+    image: postgres:latest
+    container_name: local-postgres-go
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: db_music_catalog
+
+    volumes:
+      - /Users/ahmadalaik/go/belajar/belajar_postgres/db:/var/lib/postgresql/data
