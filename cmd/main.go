@@ -4,6 +4,10 @@ import (
 	"log"
 
 	"github.com/ahmadalaik/music-catalog/internal/configs"
+	"github.com/ahmadalaik/music-catalog/internal/models/memberships"
+	membershipsRepo "github.com/ahmadalaik/music-catalog/internal/repository/memberships"
+	membershipsSvc "github.com/ahmadalaik/music-catalog/internal/service/memberships"
+	membershipsHandler "github.com/ahmadalaik/music-catalog/internal/handler/memberships"
 	"github.com/ahmadalaik/music-catalog/pkg/internalsql"
 	"github.com/gin-gonic/gin"
 )
@@ -24,10 +28,18 @@ func main() {
 
 	db, err := internalsql.Connect(config.Database.DataSourceName)
 	if err != nil {
-		log.Fatal("Failed connect database, err: %+v", err)
+		log.Fatalf("Failed connect database, err: %+v", err)
 	}
+	db.AutoMigrate(&memberships.User{})
 
 	r := gin.Default()
+
+	membershipRepo := membershipsRepo.NewRepository(db)
+	
+	membershipSvc := membershipsSvc.NewService(config, membershipRepo)
+
+	memberhipHandler := membershipsHandler.NewHandler(r, membershipSvc)
+	memberhipHandler.RegisterRoute()
 
 	r.Run(config.Service.Port)
 }
