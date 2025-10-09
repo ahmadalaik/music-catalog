@@ -3,7 +3,6 @@ package memberships
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,7 +13,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func TestHandler_SignUp(t *testing.T) {
+func TestHandler_Login(t *testing.T) {
 	ctrlMock := gomock.NewController(t)
 	defer ctrlMock.Finish()
 
@@ -24,28 +23,34 @@ func TestHandler_SignUp(t *testing.T) {
 		name               string
 		mockFn             func()
 		expectedStatusCode int
+		expectedBody       memberships.LoginResponse
+		wantErr            bool
 	}{
 		{
 			name: "success",
 			mockFn: func() {
-				mockSvc.EXPECT().SignUp(memberships.SignUpRequest{
+				mockSvc.EXPECT().Login(memberships.LoginRequest{
 					Email:    "test@gmail.com",
-					Username: "testusername",
 					Password: "password",
-				}).Return(nil)
+				}).Return("access_token", nil)
 			},
-			expectedStatusCode: 201,
+			expectedStatusCode: 200,
+			expectedBody: memberships.LoginResponse{
+				AccessToken: "access_token",
+			},
+			wantErr: false,
 		},
 		{
 			name: "failed",
 			mockFn: func() {
-				mockSvc.EXPECT().SignUp(memberships.SignUpRequest{
+				mockSvc.EXPECT().Login(memberships.LoginRequest{
 					Email:    "test@gmail.com",
-					Username: "testusername",
 					Password: "password",
-				}).Return(errors.New("username or email already exists"))
+				}).Return("", assert.AnError)
 			},
 			expectedStatusCode: 500,
+			expectedBody:       memberships.LoginResponse{},
+			wantErr:            true,
 		},
 	}
 	for _, tt := range tests {
@@ -58,12 +63,10 @@ func TestHandler_SignUp(t *testing.T) {
 				service: mockSvc,
 			}
 			h.RegisterRoute()
-			w := httptest.NewRecorder()
 
-			endpoint := "/memberships/sign-up"
-			model := memberships.SignUpRequest{
+			endpoint := "/memberships/login"
+			model := memberships.LoginRequest{
 				Email:    "test@gmail.com",
-				Username: "testusername",
 				Password: "password",
 			}
 
@@ -73,9 +76,23 @@ func TestHandler_SignUp(t *testing.T) {
 			body := bytes.NewReader(val)
 			req, err := http.NewRequest(http.MethodPost, endpoint, body)
 			assert.NoError(t, err)
+
+			w := httptest.NewRecorder()
+
 			h.ServeHTTP(w, req)
 
 			assert.Equal(t, tt.expectedStatusCode, w.Code)
+
+			if !tt.wantErr {
+				res := w.Result()
+				defer res.Body.Close()
+
+				response := memberships.LoginResponse{}
+				err := json.Unmarshal(w.Body.Bytes(), &response)
+				assert.NoError(t, err)
+
+				assert.Equal(t, tt.expectedBody, response)
+			}
 		})
 	}
 }
