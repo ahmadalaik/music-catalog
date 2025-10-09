@@ -7,7 +7,7 @@ type Config struct {
 
 type Service struct {
 	Port      string `mapstructure:"port"`
-	SecretJWT string `mapstructure:"secretJWT"`
+	SecretKey string `mapstructure:"secretJWT"`
 }
 
 type Database struct {
